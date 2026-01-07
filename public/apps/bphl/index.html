@@ -1,18 +1,839 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Arsip Digital (placeholder)</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arsip Surat BPHL Wilayah I</title>
+    <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Logo_Kementerian_Kehutanan_RI_%282024%29_%28cropped%29.png/960px-Logo_Kementerian_Kehutanan_RI_%282024%29_%28cropped%29.png" type="image/png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js/dist/fuse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      body{font-family:system-ui,Segoe UI,Roboto,Arial;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;height:100vh}
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .details-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+            background-color: #f9fafb;
+        }
+        button:disabled {
+            cursor: not-allowed;
+        }
+        #scrollToTopBtn {
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .pagination-btn.active {
+            background-color: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        @keyframes spin-reverse {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+        }
+        .animate-spin-reverse {
+            animation: spin-reverse 1s linear infinite;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .tab-button {
+            transition: all 0.2s ease-in-out;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-button.active.surat-masuk {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        .tab-button.active.surat-keluar {
+            border-color: #16a34a;
+            color: #16a34a;
+            font-weight: 600;
+        }
+        #previewModal.hidden {
+            display: none;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin 1.5s linear infinite;
+        }
     </style>
-  </head>
-  <body>
-    <div>
-      <h1>Arsip Digital (BPHL)</h1>
-      <p>Placeholder — the real site will be synced here automatically by the GitHub Action.</p>
-      <p>If you see this, the sync job hasn't run yet or produced a build.</p>
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+
+            <!-- Header Section -->
+            <div class="text-center mb-8">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Logo_Kementerian_Kehutanan_RI_%282024%29_%28cropped%29.png/960px-Logo_Kementerian_Kehutanan_RI_%282024%29_%28cropped%29.png" alt="Logo Kementerian Kehutanan" class="h-20 w-auto mx-auto mb-4">
+                <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">Arsip Digital BPHL Wilayah I</h1>
+                <p class="mt-2 text-gray-600">katalog pencarian surat dan dokumen BPHL WIlayah I</p>
+            </div>
+            
+            <!-- Tab Navigation -->
+            <div class="relative mb-8">
+                <div class="flex border-b border-gray-200">
+                    <button class="tab-button surat-masuk active flex-1 py-3 px-1 text-center text-sm font-medium text-gray-500 hover:text-blue-600" data-tab="1">
+                        Surat Masuk
+                    </button>
+                    <button class="tab-button surat-keluar flex-1 py-3 px-1 text-center text-sm font-medium text-gray-500 hover:text-green-600" data-tab="2">
+                        Surat Keluar
+                    </button>
+                </div>
+            </div>
+
+             <!-- Unified Controls -->
+            <div class="flex items-center gap-3 mb-6">
+                <button id="refreshDataButton" title="Paksa muat ulang data dari server" class="p-2 text-gray-500 hover:text-blue-600 transition duration-300 rounded-full disabled:opacity-50 disabled:cursor-not-allowed">
+                    <img id="refreshIcon" src="https://img.icons8.com/?size=100&id=11680&format=png&color=000000" alt="Muat Ulang" class="h-5 w-5">
+                </button>
+                <div id="lastUpdatedStatus" class="text-xs text-gray-500"></div>
+            </div>
+            
+            <!-- Tab Content Area -->
+            <div id="tabContentContainer">
+                <!-- Tab 1: Surat Masuk -->
+                <div id="tabContent1" class="tab-content active">
+                    <!-- Search and Filter Section -->
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                        <div class="relative flex-grow">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
+                            </div>
+                            <input type="search" id="searchInput1" class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Cari di Arsip Surat Masuk...">
+                        </div>
+                        <div class="flex-shrink-0">
+                            <select id="statusFilter1" class="w-full sm:w-48 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition h-full bg-white">
+                                <option value="">Semua Naskah</option>
+                                <option value="P3HPHL">P3HPHL</option>
+                                <option value="PEPHPHL">PEPHPHL</option>
+                                <option value="TU">TATA USAHA</option>
+                            </select>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <select id="yearFilter1" class="w-full sm:w-48 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition h-full bg-white">
+                                <option value="">Semua Tahun</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="statusMessage1" class="text-center text-gray-600 my-10"></div>
+                    <div id="catalogContainer1"></div>
+                    <!-- Pagination -->
+                    <div id="paginationControls1" class="mt-6">
+                        <div id="paginationStatus1" class="text-center text-sm text-gray-600 mb-4"></div>
+                        <div id="paginationContainer1" class="flex justify-center items-center flex-wrap gap-2"></div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Surat Keluar -->
+                <div id="tabContent2" class="tab-content">
+                     <!-- Search and Filter Section -->
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                        <div class="relative flex-grow">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
+                            </div>
+                            <input type="search" id="searchInput2" class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition" placeholder="Cari di Arsip Surat Keluar...">
+                        </div>
+                         <div class="flex-shrink-0">
+                            <select id="yearFilter2" class="w-full sm:w-48 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition h-full bg-white">
+                                <option value="">Semua Tahun</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="statusMessage2" class="text-center text-gray-600 my-10"></div>
+                    <div id="catalogContainer2"></div>
+                    <!-- Pagination -->
+                    <div id="paginationControls2" class="mt-6">
+                        <div id="paginationStatus2" class="text-center text-sm text-gray-600 mb-4"></div>
+                        <div id="paginationContainer2" class="flex justify-center items-center flex-wrap gap-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="mt-8 text-sm text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p>Tim Arsiparis Balai Pengelolaan Hutan Lestari Wilayah I 2025</p>
+            <p class="font-mono">V.3.2.6</p>
+        </footer>
     </div>
-  </body>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTopBtn" class="hidden fixed bottom-6 right-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+    
+    <!-- Preview Modal -->
+    <div id="previewModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg w-full h-full max-w-5xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 id="modalTitle" class="font-semibold text-lg truncate pr-4">Pratinjau Dokumen</h3>
+                <div class="flex items-center gap-4">
+                    <a id="modalNewTabLink" href="index.html#" target="_blank" class="text-sm text-blue-600 hover:underline">Buka di Tab Baru</a>
+                    <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="modalContent" class="p-2 flex-grow relative">
+                <div id="modalLoader" class="absolute inset-0 bg-white flex flex-col items-center justify-center">
+                    <svg class="animate-spin-slow h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                     <p class="mt-4 text-sm text-gray-600">Memuat pratinjau...</p>
+                </div>
+                 <div id="modalError" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-4 text-center">
+                    <svg class="h-12 w-12 text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <h4 class="mt-4 font-semibold text-red-800">Gagal Memuat Pratinjau</h4>
+                    <p class="mt-2 text-sm text-gray-600">Pratinjau untuk dokumen ini mungkin diblokir. Silakan gunakan tombol "Buka di Tab Baru" untuk melihatnya.</p>
+                </div>
+                <iframe id="previewIframe" class="w-full h-full border-0" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Global Config & Helpers ---
+        const monthMap = {
+            'januari': 0, 'jan': 0, 'februari': 1, 'feb': 1, 'maret': 2, 'mar': 2, 'april': 3, 'apr': 3,
+            'mei': 4, 'juni': 5, 'jun': 5, 'juli': 6, 'jul': 6, 'agustus': 7, 'agu': 7, 'september': 8,
+            'sep': 8, 'oktober': 9, 'okt': 9, 'november': 10, 'nov': 10, 'desember': 11, 'des': 11
+        };
+
+        function parseRobustDate(dateStr) {
+            if (!dateStr) return new Date(0);
+            // Handle number type (Excel serial date) if passed directly
+            if (typeof dateStr === 'number') {
+                 return new Date(Math.round((dateStr - 25569) * 86400 * 1000));
+            }
+            if (typeof dateStr !== 'string') return new Date(0);
+            
+            let cleanStr = dateStr.toLowerCase().trim();
+            
+            // Hapus nama hari bahasa Indonesia/Inggris
+            const days = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu', 
+                          'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            days.forEach(day => {
+                cleanStr = cleanStr.replace(day, '');
+            });
+            
+            // Hapus karakter aneh, sisakan huruf, angka, spasi, -, /
+            cleanStr = cleanStr.replace(/[^a-z0-9\s\-\/]/g, ' ').trim();
+            
+            // Coba deteksi format dengan nama bulan
+            const parts = cleanStr.split(/[\s\-\/]+/);
+            
+            let year = -1, month = -1, day = -1;
+            
+            // 1. Cari Tahun (4 digit)
+            for (let i = 0; i < parts.length; i++) {
+                if (/^\d{4}$/.test(parts[i])) {
+                    year = parseInt(parts[i], 10);
+                    parts.splice(i, 1); // Hapus tahun dari array
+                    break;
+                }
+            }
+            
+            // 2. Cari Bulan (Text)
+            for (let i = 0; i < parts.length; i++) {
+                if (monthMap[parts[i]] !== undefined) {
+                    month = monthMap[parts[i]];
+                    parts.splice(i, 1);
+                    break;
+                }
+            }
+            
+            // 3. Cari Hari (1-2 digit)
+            for (let i = 0; i < parts.length; i++) {
+                if (/^\d{1,2}$/.test(parts[i])) {
+                    day = parseInt(parts[i], 10);
+                    break;
+                }
+            }
+            
+            if (year !== -1 && month !== -1 && day !== -1) {
+                return new Date(year, month, day);
+            }
+            
+            // --- Fallback: Coba format angka murni ---
+            const numParts = cleanStr.split(/[\s\-\/]+/);
+            
+            // YYYY-MM-DD (ISO)
+            if (numParts.length === 3 && numParts[0].length === 4) {
+                 return new Date(parseInt(numParts[0]), parseInt(numParts[1]) - 1, parseInt(numParts[2]));
+            }
+            
+            // DD-MM-YYYY atau MM-DD-YYYY
+            if (numParts.length === 3) {
+                const n1 = parseInt(numParts[0], 10);
+                const n2 = parseInt(numParts[1], 10);
+                const n3 = parseInt(numParts[2], 10); // Asumsi tahun di belakang
+                
+                if (n3 > 1000) { 
+                     if (n2 > 12) { // Format MM/DD/YYYY (bulan pasti < 12, jadi n2 > 12 harus hari)
+                         return new Date(n3, n1 - 1, n2);
+                     } else { // Default ke DD/MM/YYYY
+                         return new Date(n3, n2 - 1, n1);
+                     }
+                }
+            }
+            
+            // Last resort
+            const standardDate = new Date(dateStr);
+            if (!isNaN(standardDate.getTime())) return standardDate;
+
+            return new Date(0);
+        }
+        
+        function getGoogleDriveEmbedUrl(url) {
+            let fileId = null;
+            let match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                fileId = match[1];
+            } else {
+                match = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    fileId = match[1];
+                }
+            }
+            if (fileId) {
+                return `https://drive.google.com/file/d/${fileId}/preview`;
+            }
+            return url.replace('/view', '/preview').replace('?usp=sharing', '');
+        }
+
+        function normalizeApiData(data) {
+            return data.map(row => {
+                const newRow = {};
+                for (const key in row) {
+                    const newKey = key.split('::')[0].toLowerCase().replace(/ /g, '_');
+                    newRow[newKey] = row[key];
+                }
+                return newRow;
+            });
+        }
+        
+        // --- Tab Management Class ---
+        class TabManager {
+            constructor(tabId, app) {
+                this.tabId = tabId;
+                this.app = app;
+                this.allDocuments = [];
+                this.currentFilteredDocuments = [];
+                this.currentPage = 1;
+                this.itemsPerPage = 15;
+                this.fuse = null;
+
+                this.elements = {
+                    searchInput: document.getElementById(`searchInput${tabId}`),
+                    catalogContainer: document.getElementById(`catalogContainer${tabId}`),
+                    statusMessage: document.getElementById(`statusMessage${tabId}`),
+                    yearFilter: document.getElementById(`yearFilter${tabId}`),
+                    statusFilter: document.getElementById(`statusFilter${tabId}`),
+                    paginationContainer: document.getElementById(`paginationContainer${tabId}`),
+                    paginationStatus: document.getElementById(`paginationStatus${tabId}`)
+                };
+
+                this.apiConfig = {
+                    url: tabId === 1 ? 'https://sheetdb.io/api/v1/ncnlh3ykuogr5' : 'https://sheetdb.io/api/v1/1zrvvfqixyjo3',
+                    cacheKey: `archiveDataCache_SheetDB_${tabId}`,
+                    timestampKey: `archiveDataTimestamp_SheetDB_${tabId}`,
+                    validLinkCheck: (doc) => doc && doc.link_surat && typeof doc.link_surat === 'string' && doc.link_surat.startsWith('https://drive.google.com'),
+                    fuseKeys: tabId === 1 ?
+                        ["kode_klasifikasi", "asal_surat", "no_surat", "deskripsi_surat", "jenis_naskah", "info_arsip", "tgl_surat", "status_dokumen", "tujuan_surat"] :
+                        ["kode_klasifikasi", "no_surat", "jenis_naskah", "tgl_surat", "deskripsi_surat", "masa_berlaku", "lokasi_dokumen"]
+                };
+                 
+                this.addEventListeners();
+            }
+
+            addEventListeners() {
+                this.elements.searchInput?.addEventListener('input', () => this.handleSearch());
+                this.elements.yearFilter?.addEventListener('change', () => this.handleSearch());
+                this.elements.statusFilter?.addEventListener('change', () => this.handleSearch());
+            }
+
+            populateYearFilter() {
+                const yearFilter = this.elements.yearFilter;
+                if (!yearFilter) return;
+                while (yearFilter.options.length > 1) yearFilter.remove(1);
+                
+                const years = [...new Set(this.allDocuments.map(doc => {
+                    const date = parseRobustDate(doc.tgl_surat);
+                    return date.getFullYear() > 1970 ? date.getFullYear().toString() : null;
+                }))].filter(Boolean).sort((a, b) => b - a);
+
+                years.forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearFilter.appendChild(option);
+                });
+                yearFilter.value = "";
+            }
+
+            renderCatalog() {
+                this.elements.catalogContainer.innerHTML = '';
+                const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+                const documentsOnPage = this.currentFilteredDocuments.slice(startIndex, startIndex + this.itemsPerPage);
+
+                documentsOnPage.forEach((doc, index) => {
+                    const actualIndex = startIndex + index;
+                    const itemHTML = this.tabId === 1 ? this.renderSuratMasuk(doc, actualIndex) : this.renderSuratKeluar(doc, actualIndex);
+                    this.elements.catalogContainer.innerHTML += itemHTML;
+                });
+            }
+            
+            renderSuratMasuk(doc, index) {
+                 return `
+                    <div class="border-b border-gray-200 last:border-b-0">
+                        <div class="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-gray-50 transition cursor-pointer" onclick="toggleDetails(${this.tabId}, ${index})">
+                            <div class="flex-grow">
+                                <div class="flex flex-wrap items-center gap-x-3 mb-2">
+                                    <span class="text-xs font-semibold bg-gray-200 text-gray-700 px-2 py-1 rounded-full">${doc.tgl_surat || 'Tanpa Tanggal'}</span>
+                                    <span class="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${doc.jenis_naskah || 'Jenis Naskah -'}</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-800">${doc.info_arsip || 'Info Arsip -'}</h3>
+                                <p class="text-gray-600 text-sm mt-1">${doc.no_surat || 'Tanpa Nomor Surat'}</p>
+                            </div>
+                            <div class="flex-shrink-0 w-full sm:w-auto flex items-center gap-2 mt-3 sm:mt-0">
+                                <button type="button" class="inline-block w-full sm:w-auto text-center bg-gray-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-gray-700 transition duration-300">Lihat Detail</button>
+                                <button onclick="showPreviewModal('${doc.link_surat}', '${doc.no_surat || 'Dokumen'}', event)" class="inline-block w-full sm:w-auto text-center bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition duration-300">Pratinjau</button>
+                            </div>
+                        </div>
+                        <div id="details-${this.tabId}-${index}" class="details-content">
+                            <div class="p-5 border-t border-gray-200">
+                                <h4 class="font-bold text-lg mb-3 text-gray-800">Informasi Lengkap</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                    <p><strong class="font-medium text-gray-500">Kode Klasifikasi:</strong> ${doc.kode_klasifikasi || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Asal Surat:</strong> ${doc.asal_surat || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Nomor Surat:</strong> ${doc.no_surat || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Jenis Naskah:</strong> ${doc.jenis_naskah || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Info Arsip:</strong> ${doc.info_arsip || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Tanggal Surat:</strong> ${doc.tgl_surat || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Status Dokumen:</strong> ${doc.status_dokumen || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Tujuan Surat:</strong> ${doc.tujuan_surat || '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+
+            renderSuratKeluar(doc, index) {
+                return `
+                    <div class="border-b border-gray-200 last:border-b-0">
+                        <div class="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-gray-50 transition cursor-pointer" onclick="toggleDetails(${this.tabId}, ${index})">
+                             <div class="flex-grow">
+                                <div class="flex flex-wrap items-center gap-x-3 mb-2">
+                                    <span class="text-xs font-semibold bg-gray-200 text-gray-700 px-2 py-1 rounded-full">${doc.tgl_surat || 'Tanpa Tanggal'}</span>
+                                    <span class="text-xs font-semibold bg-green-100 text-green-800 px-2 py-1 rounded-full">${doc.jenis_naskah || 'Jenis Naskah -'}</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-800">${doc.deskripsi_surat || 'Deskripsi -'}</h3>
+                                <p class="text-gray-600 text-sm mt-1">${doc.no_surat || 'Tanpa Nomor Surat'}</p>
+                            </div>
+                            <div class="flex-shrink-0 w-full sm:w-auto flex items-center gap-2 mt-3 sm:mt-0">
+                                <button type="button" class="inline-block w-full sm:w-auto text-center bg-gray-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-gray-700 transition duration-300">Lihat Detail</button>
+                                <button onclick="showPreviewModal('${doc.link_surat}', '${doc.no_surat || 'Dokumen'}', event)" class="inline-block w-full sm:w-auto text-center bg-green-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-green-700 transition duration-300">Pratinjau</button>
+                            </div>
+                        </div>
+                        <div id="details-${this.tabId}-${index}" class="details-content">
+                            <div class="p-5 border-t border-gray-200">
+                                <h4 class="font-bold text-lg mb-3 text-gray-800">Informasi Lengkap</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                    <p><strong class="font-medium text-gray-500">Kode Klasifikasi:</strong> ${doc.kode_klasifikasi || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Nomor Surat:</strong> ${doc.no_surat || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Jenis Naskah:</strong> ${doc.jenis_naskah || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Tanggal Surat:</strong> ${doc.tgl_surat || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Masa Berlaku:</strong> ${doc.masa_berlaku || '-'}</p>
+                                    <p><strong class="font-medium text-gray-500">Lokasi Dokumen:</strong> ${doc.lokasi_dokumen || '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+
+            renderAdvancedPagination() {
+                const container = this.elements.paginationContainer;
+                container.innerHTML = '';
+                const pageCount = Math.ceil(this.currentFilteredDocuments.length / this.itemsPerPage);
+                if (pageCount <= 1) return;
+
+                const createButton = (text, pageNum, disabled = false) => {
+                    const btn = document.createElement('button');
+                    btn.innerHTML = text;
+                    btn.disabled = disabled;
+                    btn.classList.add('pagination-btn', 'px-3', 'py-1', 'border', 'rounded-md', 'text-sm', 'font-medium', 'hover:bg-gray-100', 'transition');
+                    if (!disabled) {
+                        btn.addEventListener('click', () => { this.currentPage = pageNum; this.displayPage(true); });
+                    }
+                    return btn;
+                };
+
+                const createEllipsis = () => {
+                    const span = document.createElement('span');
+                    span.textContent = '...';
+                    span.classList.add('px-3', 'py-1', 'text-sm');
+                    return span;
+                };
+
+                const prevButton = createButton('&lt;', this.currentPage - 1, this.currentPage === 1);
+                container.appendChild(prevButton);
+
+                const pagesToShow = [];
+                if (pageCount <= 7) {
+                    for (let i = 1; i <= pageCount; i++) pagesToShow.push(i);
+                } else {
+                    pagesToShow.push(1);
+                    if (this.currentPage > 3) pagesToShow.push('...');
+                    let start = Math.max(2, this.currentPage - 1), end = Math.min(pageCount - 1, this.currentPage + 1);
+                    if (this.currentPage <= 3) { start = 2; end = 4; }
+                    if (this.currentPage >= pageCount - 2) { start = pageCount - 3; end = pageCount - 1; }
+                    for (let i = start; i <= end; i++) pagesToShow.push(i);
+                    if (this.currentPage < pageCount - 2) pagesToShow.push('...');
+                    pagesToShow.push(pageCount);
+                }
+
+                pagesToShow.forEach(item => {
+                    if (item === '...') {
+                        container.appendChild(createEllipsis());
+                    } else {
+                        const btn = createButton(item, item);
+                        if (item === this.currentPage) btn.classList.add('active');
+                        container.appendChild(btn);
+                    }
+                });
+
+                const nextButton = createButton('&gt;', this.currentPage + 1, this.currentPage === pageCount);
+                container.appendChild(nextButton);
+            }
+
+            setupPagination() {
+                const status = this.elements.paginationStatus;
+                status.innerHTML = '';
+                const pageCount = Math.ceil(this.currentFilteredDocuments.length / this.itemsPerPage);
+                if (this.currentFilteredDocuments.length > 0) {
+                    const totalResults = this.currentFilteredDocuments.length;
+                    const startItem = (this.currentPage - 1) * this.itemsPerPage + 1;
+                    const endItem = Math.min(startItem + this.itemsPerPage - 1, totalResults);
+                    status.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalResults} hasil.`;
+                }
+                this.renderAdvancedPagination(pageCount);
+            }
+
+            displayPage(scroll = false) {
+                this.renderCatalog();
+                this.setupPagination();
+                if (scroll) {
+                    window.scrollTo({
+                        top: this.elements.catalogContainer.offsetTop - 20,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+            
+            processData(data) {
+                this.allDocuments = data;
+                // Pre-sort documents by date descending immediately when data is loaded
+                this.allDocuments.sort((a, b) => parseRobustDate(b.tgl_surat) - parseRobustDate(a.tgl_surat));
+
+                const fuseOptions = {
+                    keys: this.apiConfig.fuseKeys,
+                    includeScore: false, threshold: 0.4, ignoreLocation: true
+                };
+                this.fuse = new Fuse(this.allDocuments, fuseOptions);
+
+                this.populateYearFilter();
+                this.handleSearch();
+                
+                const els = this.elements;
+                if(els.searchInput) els.searchInput.disabled = false;
+                if(els.yearFilter) els.yearFilter.disabled = false;
+                if(els.statusFilter) els.statusFilter.disabled = false;
+            }
+
+            handleSearch() {
+                const searchTerm = this.elements.searchInput?.value.trim() || '';
+                const selectedYear = this.elements.yearFilter?.value || '';
+                const selectedStatus = this.elements.statusFilter?.value || '';
+
+                let preFilteredData = this.allDocuments;
+
+                if (selectedYear) {
+                    preFilteredData = preFilteredData.filter(doc => (doc.tgl_surat || '').includes(selectedYear));
+                }
+                if (selectedStatus) {
+                    preFilteredData = preFilteredData.filter(doc => (doc.status_dokumen || '').toLowerCase().includes(selectedStatus.toLowerCase()));
+                }
+
+                let finalResults;
+
+                if (searchTerm) {
+                    const localFuse = new Fuse(preFilteredData, {
+                        keys: this.apiConfig.fuseKeys,
+                        includeScore: false, threshold: 0.4, ignoreLocation: true
+                    });
+                    finalResults = localFuse.search(searchTerm).map(result => result.item);
+                } else {
+                    // If no search term, maintain the date sort (already sorted in processData, but re-sort to be safe)
+                    finalResults = preFilteredData;
+                     // Explicitly sort again to ensure order
+                    finalResults.sort((a, b) => parseRobustDate(b.tgl_surat) - parseRobustDate(a.tgl_surat));
+                }
+
+                this.currentFilteredDocuments = finalResults;
+                this.currentPage = 1;
+                
+                if (this.currentFilteredDocuments.length === 0) {
+                    const hasActiveFilter = searchTerm || selectedYear || selectedStatus;
+                    if (hasActiveFilter) this.elements.statusMessage.textContent = 'Tidak ada hasil yang ditemukan untuk filter Anda.';
+                    else if (this.allDocuments.length > 0) this.elements.statusMessage.textContent = '';
+                    else this.elements.statusMessage.textContent = 'Tidak ada dokumen di dalam database.';
+                } else {
+                    this.elements.statusMessage.innerHTML = '';
+                }
+
+                this.displayPage();
+            }
+        }
+        
+        // --- Main App Controller ---
+        class App {
+            constructor() {
+                this.tabs = {
+                    1: new TabManager(1, this),
+                    2: new TabManager(2, this)
+                };
+                this.elements = {
+                    refreshDataButton: document.getElementById('refreshDataButton'),
+                    refreshIcon: document.getElementById('refreshIcon'),
+                    lastUpdatedStatus: document.getElementById('lastUpdatedStatus'),
+                    tabButtons: document.querySelectorAll('.tab-button'),
+                    tabContents: document.querySelectorAll('.tab-content')
+                };
+                this.cacheDuration = 24 * 60 * 60 * 1000; // 24 hours
+                this.addEventListeners();
+            }
+
+            addEventListeners() {
+                this.elements.refreshDataButton.addEventListener('click', () => this.fetchAllDataFromServer(true));
+                
+                this.elements.tabButtons.forEach(button => {
+                    button.addEventListener('click', () => this.switchTab(button.dataset.tab));
+                });
+            }
+            
+            switchTab(tabId) {
+                const isSuratMasuk = tabId === '1';
+
+                this.elements.tabButtons.forEach(btn => {
+                    btn.classList.remove('active', 'surat-masuk', 'surat-keluar');
+                    if (btn.dataset.tab === tabId) {
+                        btn.classList.add('active', isSuratMasuk ? 'surat-masuk' : 'surat-keluar');
+                    }
+                });
+
+                this.elements.tabContents.forEach(content => {
+                    if (content.id === `tabContent${tabId}`) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+            }
+            
+            updateLastUpdatedStatus(timestamp) {
+                if (!timestamp) {
+                    this.elements.lastUpdatedStatus.textContent = ''; return;
+                }
+                const date = new Date(parseInt(timestamp));
+                const time = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                const day = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
+                this.elements.lastUpdatedStatus.textContent = `Data terakhir diperbarui: ${day}, pukul ${time}`;
+            }
+            
+            async fetchAllDataFromServer(isForced = false) {
+                const els = this.elements;
+                els.refreshIcon.classList.add('animate-spin-reverse');
+                els.refreshDataButton.disabled = true;
+
+                Object.values(this.tabs).forEach(tab => {
+                    tab.elements.statusMessage.textContent = isForced ? 'Memuat ulang data terbaru...' : 'Memuat data...';
+                    if (tab.elements.searchInput) tab.elements.searchInput.disabled = true;
+                    if (tab.elements.yearFilter) tab.elements.yearFilter.disabled = true;
+                    if (tab.elements.statusFilter) tab.elements.statusFilter.disabled = true;
+                });
+
+                try {
+                    const fetchPromises = Object.values(this.tabs).map(async tab => {
+                        const response = await fetch(tab.apiConfig.url);
+                        if (!response.ok) throw new Error(`Network error for ${tab.apiConfig.url}`);
+                        const jsonData = await response.json();
+                        const normalizedData = normalizeApiData(jsonData);
+                        const newData = normalizedData.filter(tab.apiConfig.validLinkCheck);
+                        localStorage.setItem(tab.apiConfig.cacheKey, JSON.stringify(newData));
+                        return newData;
+                    });
+                    
+                    await Promise.all(fetchPromises);
+                    
+                    const newTimestamp = Date.now();
+                    Object.values(this.tabs).forEach(tab => localStorage.setItem(tab.apiConfig.timestampKey, newTimestamp));
+                    
+                    if (isForced) {
+                        this.tabs[1].elements.statusMessage.innerHTML = `<p class="text-green-600 font-semibold">Data berhasil diperbarui.</p>`;
+                        this.tabs[2].elements.statusMessage.innerHTML = '';
+                        setTimeout(() => { this.tabs[1].elements.statusMessage.innerHTML = ''; }, 3000);
+                    }
+                    
+                    this.updateLastUpdatedStatus(newTimestamp);
+                    this.initializeTabs(true); // isRefreshed = true
+
+                } catch (error) {
+                    console.error('Gagal mengambil data:', error);
+                    const errorHTML = `
+                        <div class="bg-red-50 border-l-4 border-red-400 p-6 rounded-lg text-left max-w-2xl mx-auto">
+                           <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-6 w-6 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.031-1.742 3.031H4.42c-1.532 0-2.492-1.697-1.742-3.031l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 011-1h.008a1 1 0 011 1v3.012a1 1 0 01-1 1h-.008a1 1 0 01-1-1V5z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-4">
+                                    <h3 class="text-lg font-bold text-red-800">Gagal Memuat Database</h3>
+                                    <div class="mt-2 text-sm text-red-700">
+                                        <p>Terjadi kesalahan saat mencoba mengambil data. Periksa kembali koneksi internet Anda dan pastikan tautan API sudah benar.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                    this.tabs[1].elements.statusMessage.innerHTML = errorHTML;
+                } finally {
+                    els.refreshIcon.classList.remove('animate-spin-reverse');
+                    els.refreshDataButton.disabled = false;
+                }
+            }
+
+            initializeTabs(isRefreshed = false) {
+                let needsFetching = false;
+                const timestamps = [];
+                Object.values(this.tabs).forEach(tab => {
+                    const cachedData = localStorage.getItem(tab.apiConfig.cacheKey);
+                    const cachedTimestamp = localStorage.getItem(tab.apiConfig.timestampKey);
+                    
+                    if (cachedData && cachedTimestamp && (Date.now() - cachedTimestamp < this.cacheDuration)) {
+                        console.log(`Loading tab ${tab.tabId} from cache.`);
+                        if(!isRefreshed) tab.elements.statusMessage.textContent = "Memuat data dari cache...";
+                        tab.processData(JSON.parse(cachedData));
+                        timestamps.push(cachedTimestamp);
+                    } else {
+                        needsFetching = true;
+                    }
+                });
+
+                if (timestamps.length > 0) {
+                    this.updateLastUpdatedStatus(Math.max(...timestamps));
+                }
+
+                if(needsFetching) {
+                     console.log("Cache usang atau kosong. Mengambil semua data dari server.");
+                     this.fetchAllDataFromServer(false);
+                }
+            }
+        }
+        
+        const app = new App();
+
+        function toggleDetails(tabId, docIndex) {
+            const manager = app.tabs[tabId];
+            const detailsContent = document.getElementById(`details-${tabId}-${docIndex}`);
+            if (detailsContent) {
+                if (detailsContent.style.maxHeight) {
+                    detailsContent.style.maxHeight = null;
+                } else {
+                    detailsContent.style.maxHeight = detailsContent.scrollHeight + "px";
+                }
+            }
+        }
+        
+        const previewModal = document.getElementById('previewModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const previewIframe = document.getElementById('previewIframe');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalLoader = document.getElementById('modalLoader');
+        const modalError = document.getElementById('modalError');
+        const modalNewTabLink = document.getElementById('modalNewTabLink');
+
+        let previewTimeout;
+
+        function showPreviewModal(url, title, event) {
+            event.stopPropagation();
+            const embedUrl = getGoogleDriveEmbedUrl(url);
+            
+            modalTitle.textContent = `Pratinjau: ${title}`;
+            modalNewTabLink.href = url;
+            
+            previewIframe.src = 'about:blank';
+            modalLoader.classList.remove('hidden');
+            modalError.classList.add('hidden');
+            previewIframe.classList.add('hidden');
+            
+            previewModal.classList.remove('hidden');
+            
+            previewIframe.onload = () => {
+                clearTimeout(previewTimeout);
+                modalLoader.classList.add('hidden');
+                previewIframe.classList.remove('hidden');
+            };
+
+            previewTimeout = setTimeout(() => {
+                modalLoader.classList.add('hidden');
+                modalError.classList.remove('hidden');
+            }, 5000);
+
+            previewIframe.src = embedUrl;
+        }
+
+        function hidePreviewModal() {
+            previewModal.classList.add('hidden');
+            previewIframe.src = 'about:blank';
+            clearTimeout(previewTimeout);
+        }
+
+        closeModalBtn.addEventListener('click', hidePreviewModal);
+        previewModal.addEventListener('click', (event) => {
+            if (event.target === previewModal) {
+                hidePreviewModal();
+            }
+        });
+
+        window.addEventListener('load', () => app.initializeTabs());
+
+        // --- Scroll to Top Logic ---
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                scrollToTopBtn.classList.remove('hidden');
+            } else {
+                scrollToTopBtn.classList.add('hidden');
+            }
+        });
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    </script>
+</body>
 </html>
