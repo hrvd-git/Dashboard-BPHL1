@@ -1,0 +1,95 @@
+name: Sync Arsip Digital (BPHL)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # daily at 03:00 UTC (optional)
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      APP_REPO: hrvd-git/Arsip-Digital-BPHL-I
+      APP_DEPLOY_URL: https://hrvd-git.github.io/Arsip-Digital-BPHL-I/
+      DEST_DIR: public/apps/bphl
+
+    steps:
+      - name: Checkout dashboard repo
+        uses: actions/checkout@v4
+
+      - name: Checkout app repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.APP_REPO }}
+          path: source-app
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Try to detect and build (if package.json exists)
+        run: |
+          set -e
+          cd source-app || exit 1
+          if [ -f package.json ]; then
+            echo "package.json found, installing & building"
+            npm ci
+            if npm run | grep -q "build"; then
+              npm run build
+            else
+              echo "no build script found"
+            fi
+          else
+            echo "no package.json; skipping build step"
+          fi
+
+      - name: Prepare destination dir
+        run: |
+          mkdir -p ${{ env.DEST_DIR }}
+
+      - name: Copy build output (dist or build) or fallback to repo files
+        run: |
+          set -e
+          # prefer build outputs
+          if [ -d source-app/dist ]; then
+            echo "copying dist -> $DEST_DIR"
+            rm -rf $DEST_DIR/*
+            cp -r source-app/dist/* $DEST_DIR/
+          elif [ -d source-app/build ]; then
+            echo "copying build -> $DEST_DIR"
+            rm -rf $DEST_DIR/*
+            cp -r source-app/build/* $DEST_DIR/
+          else
+            echo "no dist/build found — trying to mirror deployed site"
+            tmpdir=$(mktemp -d)
+            echo "downloading deployed site ${APP_DEPLOY_URL} into $tmpdir"
+            # use wget to mirror the site
+            wget --mirror --convert-links --no-parent -e robots=off -P "$tmpdir" "${APP_DEPLOY_URL}"
+            # the mirrored site path
+            mirrored="$tmpdir/$(echo ${APP_DEPLOY_URL} | sed 's@https\?://@@')"
+            if [ -d "$mirrored" ]; then
+              rm -rf $DEST_DIR/*
+              cp -r "$mirrored"/* $DEST_DIR/
+            else
+              echo "mirror failed; nothing to copy"
+            fi
+          fi
+
+      - name: Commit changes (if any)
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add --all ${{ env.DEST_DIR }}
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: sync Arsip-Digital-BPHL-I into $DEST_DIR"
+          git push origin HEAD:main
